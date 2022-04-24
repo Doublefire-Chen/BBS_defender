@@ -1,3 +1,8 @@
+#Author:Doublefire.Chen
+#Author_BBS_id:Bigscience
+#last_modified_time:2022年04月25日06:58:06
+#version:2.0
+#location:HSC of PKU or BJMU(dawu,23333)
 # coding:utf-8
 import requests
 import re
@@ -25,7 +30,7 @@ all_userid=[] #已爬用户列表初始赋值
 crawl_flag=0 #完成第一遍完整爬取所有页面的flag
 complete_flag=0 #完成输入url和守护时间的flag
 defender_flag=0 #发布守护通知flag
-disapeared_data_postid=set() #被删帖子列表初始赋值
+disapeared_data_postid=[] #被删帖子列表初始赋值
 all_poster={} #用于存储所有被爬取帖子内容的字典初始赋值
 reborn_num=0 #守护通知复活次数初始赋值
 five_kill=[] #五杀荣耀播报用的列表初始赋值
@@ -33,6 +38,7 @@ crawl_complete_flag=0 #完成爬取单个页面的flag初始赋值
 stop_flag=0 #停止flag初始赋值
 defender_postid="tmp" #守护通知postid初始赋值
 admin="" #版务列表初始赋值
+first_postid={} #存储每一页第一层楼的postid的字典初始赋值
 header={
 'Accept': 'application/json, text/javascript, */*; q=0.01',
 'Accept-Encoding': 'gzip, deflate, br',
@@ -70,6 +76,7 @@ def bomb(soup): #炸楼函数，检测整栋楼是否还在
 				bomb_content=bomb_content+all_poster[postid]+"******************************************************"+"\n"
 			for id in all_userid: #遍历，给每一个参与过讨论的id发站内信，进行全局广播
 				mail(id,"未名BBS守护者自动回复",bomb_content,signature)
+				time.sleep(6)
 			print("已通知每一位id，程序结束") #提示性输出
 			stop_flag=1 #停止程序flag触发
 			log_creator() #生成日志
@@ -81,20 +88,20 @@ def bomb(soup): #炸楼函数，检测整栋楼是否还在
 			os._exit(0) #停止
 def log_creator(): #生成日志的函数
 	filename=serial_number+".txt" #生成文件名
-			file=open(filename,'w',encoding='utf-8') #创建文件
-			i=0 #循环控制变量
-			while i < len(crawled_date_postid): #遍历
-				crawled_date_postid[i]=int(crawled_date_postid[i]) #将字符串转化为int，为后面排序做准备
-				i=i+1 #循环控制变量
-			crawled_date_postid.sort() #按照从小到大的顺序排序，这样生成的日志就是按照时间顺序排列的了
-			i=0 #循环控制变量
-			while i < len(crawled_date_postid): #遍历
-				crawled_date_postid[i]=str(crawled_date_postid[i]) #再将int变成str
-				i=i+1 #循环控制变量
-			for postid in crawled_date_postid: #变量每一个被爬到的帖子
-				file.write(all_poster[postid]+"\n"+"******************************************************"+'\n') #写入内容
-			file.close #关闭文件
-			print("日志文件生成完毕") #提示性输出
+	file=open(filename,'w',encoding='utf-8') #创建文件
+	i=0 #循环控制变量
+	while i < len(crawled_date_postid): #遍历
+		crawled_date_postid[i]=int(crawled_date_postid[i]) #将字符串转化为int，为后面排序做准备
+		i=i+1 #循环控制变量
+	crawled_date_postid.sort() #按照从小到大的顺序排序，这样生成的日志就是按照时间顺序排列的了
+	i=0 #循环控制变量
+	while i < len(crawled_date_postid): #遍历
+		crawled_date_postid[i]=str(crawled_date_postid[i]) #再将int变成str
+		i=i+1 #循环控制变量
+	for postid in crawled_date_postid: #变量每一个被爬到的帖子
+		file.write(all_poster[postid]+"\n"+"******************************************************"+'\n') #写入内容
+	file.close #关闭文件
+	print("日志文件生成完毕") #提示性输出
 def get_admin(url): #爬取版务的函数
 	url=url.replace('post-read.php?',"thread.php?") #将输入的帖子链接替换为版块链接
 	url= re.sub(r'threadid=\d+', "mode=topic", url) #同上
@@ -140,28 +147,48 @@ def get_post_landlord(url): #获取第一层楼postid函数
 	landlord_postid=re.search(r'data-postid="\d+"',str(first_div)).group(0).replace("data-postid=","").replace('"',"") #获取第一层楼postid
 	return landlord_postid
 def detector(url): #检测被删帖函数
-	global exist_data_postid,reborn_num,five_kill,landlord_postid,defender_postid #申明全局变量
+	global exist_data_postid,reborn_num,five_kill,landlord_postid,defender_postid,first_postid,disapeared_data_postid #申明全局变量
 	print("detector（）激活") #提示性输出
 	exist_data_postid=[] #现存帖子postid列表初始赋值
 	all_page_number=get_page_number(url) #获取总页数
 	i=all_page_number #临时变量i用来控制循环
+	safe_flag=0 #前面页面是否安全flag
 	while i>0: #遍历爬取所有现存帖子的postid
+		if safe_flag==1: #前面的页面如果安全就直接break
+			break
 		url_with_page=url+"&page="+str(i) #将url变成第i页的url
 		r=requests.get(url_with_page) #获取页面内容
 		soup=BeautifulSoup(r.text,"html.parser") #解析
 		bomb(soup) #炸楼函数
+		first_post_flag=0
 		card_list=soup.find('div',class_='card-list') #爬到card-list
 		for post_card in card_list.find_all('div',class_='post-card'): #爬到postcard
-			data_postid=re.search(r'data-postid="\d+"',str(post_card)).group(0).replace("data-postid=","").replace('"',"") #获取datapostid			
-			if data_postid not in exist_data_postid: #判断这个帖子是否被爬过
+			data_postid=re.search(r'data-postid="\d+"',str(post_card)).group(0).replace("data-postid=","").replace('"',"") #获取datapostid
+			if data_postid==first_postid[i] and first_post_flag==0: #判断第一个帖子是否变化
+				first_postid[i]=data_postid #更新第一个帖子的postid
+				print("已更新第"+str(i)+"页第一个帖子的postid")
+				print("前面"+str(i-1)+"页都是安全的") #提示性输出
+				unsafe_page=i #记录不安全的页面
+				safe_flag=1 #改变safe_flag
+				first_post_flag=1 #改变first_post_flag
+			elif data_postid!=first_postid[i] and first_post_flag==0:
+				first_postid[i]=data_postid #更新第一个帖子的postid
+				first_post_flag=1 #改变first_post_flag
+				print("已更新第"+str(i)+"页第一个帖子的postid")
+			if data_postid not in exist_data_postid: #判断这个帖子是否被爬过，防止重复存入
 				exist_data_postid.append(data_postid) #如果没被爬就加进去
 		i=i-1 #循环控制
-	disapeared_data_postid=set(crawled_date_postid)^set(exist_data_postid) #使用异或运算符找到被删的帖子 #参考：https://blog.csdn.net/qq_40808154/article/details/94591431
+	#disapeared_data_postid=set(crawled_date_postid)^set(exist_data_postid) #使用异或运算符找到被删的帖子 #参考：https://blog.csdn.net/qq_40808154/article/details/94591431
+	for postid in crawled_date_postid:
+		if postid >= first_postid[unsafe_page]:
+			if postid not in exist_data_postid:
+				disapeared_data_postid.append(postid)
+				print("发现被删帖子")
 	if str(defender_postid) in disapeared_data_postid: #判断守护通知帖是否被删
 		reborn_num=reborn_num+1 #被删了重生次数就加一
 		now_time=datetime.datetime.now() #获取当前时间
 		now_time = now_time.strftime("%Y-%m-%d %H:%M:%S") #格式化时间
-		reborn_content="本帖于"+str(now_time)+"自动复活，这是本帖第"+str(reborn_num)+"次复活"+"\n"+defender_content #复活帖内容
+		reborn_content="本帖于"+str(now_time)+"自动复活，这是本帖第"+str(reborn_num)+"次复活"+"\n"+"本程序目前设定的运行时间为"+str(running_time)+"小时"+"\n"+defender_content #复活帖内容
 		reply(landlord_postid,reborn_content) #发布复活贴
 		print("第"+str(reborn_num)+"次复活成功") #提示性输出
 	if len(disapeared_data_postid)!=0: #如果有帖子被删了
@@ -202,15 +229,20 @@ def mail(username,title,content,signature): #发站内信函数
 	mail=session.post('https://bbs.pku.edu.cn/v2/ajax/create_mail.php',headers=header,data=mail_data) #发送站内信
 	if '"success":true' in mail.text: #判断是否发送成功
 		print("给"+username+"发送站内信成功") #提示性输出
-def crawler(page): #爬页面帖子函数
-	global crawled_date_postid,crawl_flag,black_id_list,white_id_list,white_postid_list,ur_username,defender_flag,disapeared_data_postid,all_poster,defender_content,crawl_complete_flag,defender_postid,white_postid_list_for_admin,stop_flag #申明全局变量
+def crawler(page,all_page_number): #爬页面帖子函数
+	global crawled_date_postid,crawl_flag,black_id_list,white_id_list,white_postid_list,ur_username,defender_flag,disapeared_data_postid,all_poster,defender_content,crawl_complete_flag,defender_postid,white_postid_list_for_admin,stop_flag,first_postid #申明全局变量
 	url_with_page=url+"&page="+str(page) #生成指定页数的url
 	r=requests.get(url_with_page) #获取页面内容
 	soup=BeautifulSoup(r.text,"html.parser") #解析
 	bomb(soup) #炸楼函数
 	card_list=soup.find('div',class_='card-list') #爬到card-list
+	first_post_flag=0 #爬取第一个帖子的控制flag
 	for post_card in card_list.find_all('div',class_='post-card'): #遍历每一个post-card
 		data_postid=re.search(r'data-postid="\d+"',str(post_card)).group(0).replace("data-postid=","").replace('"',"") #获取postid
+		if first_post_flag==0 and len(first_postid)!=all_page_number: #判断是否为第一个帖子并且没有把每一页都存进去
+			first_postid[page]=data_postid #是的话就存下来
+			first_post_flag=1 #改变控制flag
+			print("已存储当前页面的第一个帖子的postid") #提示性输出
 		if data_postid not in crawled_date_postid: #判断这个帖子是否爬过
 			print("发现新楼层") #提示性输出
 			post_owner=post_card.find('div',class_="post-owner") #爬到poster-owner
@@ -280,7 +312,7 @@ def crawler(page): #爬页面帖子函数
 				print("收到站友"+username+"的请求") #提示性输出
 				disapeared_data_postid=detector(url) #获取被删帖子的postid
 				mail_content="" #站内信内容初始赋值
-				if disapeared_data_postid==set(): #判断有无帖子被删
+				if disapeared_data_postid==[]: #判断有无帖子被删
 					mail_content="目前无帖子被删除" #提示性输出
 					mail(username,"未名BBS守护者自动回复",mail_content,signature) #发送站内信
 					white_postid_list.append(data_postid) #将该请求帖子postid加入白名单
@@ -291,6 +323,7 @@ def crawler(page): #爬页面帖子函数
 						if data_postid not in crawled_date_postid: #如果该帖子没有被爬。有这种情况，就是当程序detector函数正在爬取现有的帖子时正好有一个人发新帖子，那么异或运算就会把这个新帖子当做被删除的帖子。我这里这么写就是为了避免出现这种情况。
 							continue #下一个
 						if white_id_list==[] and white_postid_list_for_admin==[]: #如果id白名单和postid白名单都是空的
+							mail_content="被删除帖子："+"\n"
 							mail_content=mail_content+all_poster[data_postid]+"\n"+"******************************************************"+"\n" #直接组合内容
 						elif white_id_list!=[]: #如果id白名单不为空
 							for id in white_id_list: #遍历id白名单的每一个id
@@ -304,11 +337,11 @@ def crawler(page): #爬页面帖子函数
 								mail_content=mail_content+all_poster[data_postid]+"\n"+"******************************************************"+"\n" #组合内容
 					if mail_content=="": #如果发件内容没被更改
 						mail_content="目前无帖子被删除" #说明目前没有帖子被删除
-					if username!=ur_username: #还要判断这个请求是不是自己发起的
-						mail(username,"未名BBS守护者自动回复",mail_content,signature) #不是的话就发送站内信
-					else: #如果这个请求是自己发的
-						print("判定为自己给自己发送请求，目的是激活detector()，不会给自己发送站内信的，内容直接输出到终端") #提示性输出
-						print(mail_content) #在终端直接输出被删除帖子内容，因为自己不能给自己发站内信
+					#if username!=ur_username: #还要判断这个请求是不是自己发起的
+					mail(username,"未名BBS守护者自动回复",mail_content,signature) #不是的话就发送站内信
+					#else: #如果这个请求是自己发的
+						#print("判定为自己给自己发送请求，目的是激活detector()，不会给自己发送站内信的，内容直接输出到终端") #提示性输出
+						#print(mail_content) #在终端直接输出被删除帖子内容，因为自己不能给自己发站内信#2022年04月25日06:00:55，今天发现原来自己可以给自己发站内信，哈哈哈，那还挺好的
 					white_postid_list.append(data_postid) #将该请求加入白名单，因为已经回复过了
 					print("请求处理完毕") #提示性输出
 			if (content in ["#自删","＃自删"]) and (crawl_flag!=0): #判断是否为自删请求
@@ -331,7 +364,7 @@ def crawler(page): #爬页面帖子函数
 			log_creator() #生成日志
 			now_time=datetime.datetime.now() #获取当前时间
 			now_time = now_time.strftime("%Y-%m-%d %H:%M:%S") #格式化时间
-			quit_content="本程序于"+str(now_time)+"停止运行（有可能是时间到了，也有可能是"+ur_username+"手动停了，或者是停电了）" #回帖内容赋值
+			quit_content="本程序于"+str(now_time)+"停止运行（有可能是时间到了，也有可能是"+ur_username+"手动停了）" #回帖内容赋值
 			reply(landlord_postid,quit_content) #回帖
 			os._exit(0) #结束程序
 	print("第"+str(page)+"页爬取完毕") #提示性输出
@@ -349,7 +382,7 @@ def main(): #主函数
 	admin=get_admin(url) #获取版务
 	if defender_flag==0: #判断守护通知是否发出
 		landlord_postid=get_post_landlord(url) #获取一楼的postid
-		defender_content=ur_username+"于"+str(start_time)+"为本主题帖运行未名BBS守护者程序"+"\n"+"守护时间："+str(running_time)+"小时"+"\n"+"版本号：公测v1.0"+"\n"+"项目地址：https://github.com/Doublefire-Chen/BBS_defender"+"\n"+"本版块版务："+admin+"\n"+"###以下所有回复内容均不要引号，不要中间的加号，不要句号，不要加多余的字符###"+"\n"+"回复“#+思想自由，兼容并包”查看被删除帖子（站内信形式）"+"\n"+"回复“#+自删”即可将自己的id加入白名单（请在收到站内信提示后再删帖）"+"\n"+"版务回复：“#+删帖postid=#+删帖原因：”即可将该postid加入白名单（未写明删帖原因视为无效回复）（请在收到站内信提示后删帖）" #回复内容赋值
+		defender_content=ur_username+"于"+str(start_time)+"为本主题帖运行未名BBS守护者程序"+"\n"+"守护时间："+str(running_time)+"小时"+"\n"+"版本号：公测v2.0"+"\n"+"项目地址：https://github.com/Doublefire-Chen/BBS_defender"+"\n"+"本版块版务："+admin+"\n"+"###以下所有回复内容均不要引号，不要中间的加号，不要句号，不要加多余的字符###"+"\n"+"回复“#+思想自由，兼容并包”查看被删除帖子（站内信形式）"+"\n"+"回复“#+自删”即可将自己的id加入白名单（请在收到站内信提示后再删帖）"+"\n"+"版务回复：“#+删帖postid=#+删帖原因：”即可将该postid加入白名单（未写明删帖原因视为无效回复）（请在收到站内信提示后删帖）" #回复内容赋值
 		reply(landlord_postid,defender_content) #回帖
 		print("已发布守护通知") #提示性输出
 	while True:
@@ -357,7 +390,7 @@ def main(): #主函数
 		soup=BeautifulSoup(r.text,"html.parser") #解析
 		bomb(soup) #炸楼函数
 		if tmp_page<=get_page_number(url): #如果当前页数比总页数小
-			crawler(tmp_page) #爬
+			crawler(tmp_page,total_page_number) #爬
 		else: #如果当前页数比总页数还大
 			tmp_page=get_page_number(url) #重新获取总页数
 			print("页数减少") #说明删帖导致楼层数减少
@@ -453,3 +486,7 @@ t3=threading.Thread(target=time_controler) #申明第三个线程
 t1.start() #运行第一个线程
 t2.start() #运行第二个线程
 t3.start() #运行第三个线程
+
+#bug用户删帖后第七页会先爬一下更新第一个帖子#
+#存储disappear#
+#更改通知（复活、停止）#
