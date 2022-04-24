@@ -1,7 +1,7 @@
 # BBS_defender  
 未名BBS守护者交互式爬虫  
 ## 前言  
-作者为什么要写这样的一个函数？  
+作者为什么要写这样的一个脚本？  
 那是因为我看了这个帖子：https://bbs.pku.edu.cn/v2/post-read.php?bid=138&threadid=18263492
 ![Image load fail](./image/watern_witness3.png)  
 ![Image load fail](./image/watern_witness2.png)  
