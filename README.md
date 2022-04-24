@@ -14,7 +14,7 @@ HSC领导和rmyy领导对于水n的大无畏送鹿精神作出了高度评价，
 2. 检测被删帖子  
 3. 用户交互（包括查看被删帖子、自删免爬、版务删帖免爬）  
 ![Image load fail](./image/reply.png)
-![Image load fail](./image/white.png)
+![Image load fail](./image/white_list.png)
 4. 生成日志文件（备份）  
 ![Image load fail](./image/log.png)
 5. 动态操作（加时、减时、手动停止）  
