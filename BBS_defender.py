@@ -135,7 +135,7 @@ def get_page_number(url): #获取总页数函数
 	r=requests.get(url) #获取页面内容
 	soup=BeautifulSoup(r.text,"html.parser") #解析
 	bomb(soup) #炸楼函数
-	total_page_number=int(re.search(r"<div>/ \d</div>",str(soup)).group(0).replace("<div>/ ","").replace("</div>","")) #获取总页数
+	total_page_number=int(re.search(r"<div>/ \d+</div>",str(soup)).group(0).replace("<div>/ ","").replace("</div>","")) #获取总页数
 	print("已获取总页数") #提示性输出
 	return total_page_number
 def get_post_landlord(url): #获取第一层楼postid函数
