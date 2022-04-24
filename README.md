@@ -31,7 +31,7 @@ HSC领导和rmyy领导对于水n的大无畏送鹿精神作出了高度评价，
 打开```BBS_defender.py```文件，将配置区的内容补全，然后运行，根据提示输入url、守护时间即可，后续动态操作也有提示 
 ### 关于配置区参数的获取  
 1. ```t```。谷歌浏览器（有开发者工具的浏览器都行）进入BBS https://bbs.pku.edu.cn/v2/home.php 打开开发者工具（快捷键：F12），然后登陆，在开发者工具Network选项下面找到login.php这个数据包，里面就有t值，如图：  
-![Image load fail](https://github.com/Doublefire-Chen/BDWM_BBS_reminder/blob/main/picture/get_t.png)  
+![Image load fail](./image/get_t.png)  
 ## 鸣谢  
 非常感谢下列所有站友帮助测试：（排名不分先后）  
 ['KakaHiguain', 'Sirius', 'Splindow', 'Seter', 'kkzhiyu', 'cylpku', 'ddvdv', 'jacksonfu', 'Kuroko', 'lxgzg', 'nokay', 'dysyyds', 'jzljlj', 'sugar', 'Raypotter', 'hgj', 'Lorry', 'krgkkkk', 'GWZZ', 'durr', 'kangkangcmr', 'shzmcxk', 'bbsatpku', 'vkzotto', 'tengjingshu', 'UDK']  
