@@ -1,6 +1,6 @@
 #Author:Doublefire.Chen
 #Author_BBS_id:Bigscience
-#last_modified_time:2022年04月25日06:58:06
+#last_modified_time:2022年04月25日12:46:21
 #version:2.0
 #location:HSC of PKU or BJMU(dawu,23333)
 # coding:utf-8
@@ -311,19 +311,20 @@ def crawler(page,all_page_number): #爬页面帖子函数
 			if (content in ["#思想自由，兼容并包","#思想自由,兼容并包","＃思想自由，兼容并包","＃思想自由,兼容并包"]) and (username not in black_id_list) and (data_postid not in white_postid_list) and (crawl_flag!=0): #由于中英文的井号有2种，逗号有2种，为了站友们方便，所以把4种情况都列出来了，黑白名单的请求不会生效，黑名单我就不多说了，白名单的是之前发送的请求，已经处理过，这里判断一下避免二次回复。crawl_flag的作用是确保整栋楼完整的被爬了一边，这样程序运行之前的请求也是无效的。
 				print("收到站友"+username+"的请求") #提示性输出
 				disapeared_data_postid=detector(url) #获取被删帖子的postid
-				mail_content="" #站内信内容初始赋值
+				mail_content="目前无帖子被删除" #站内信内容初始赋值
 				if disapeared_data_postid==[]: #判断有无帖子被删
-					mail_content="目前无帖子被删除" #提示性输出
+					print("目前无帖子被删除") #提示性输出
 					mail(username,"未名BBS守护者自动回复",mail_content,signature) #发送站内信
 					white_postid_list.append(data_postid) #将该请求帖子postid加入白名单
 					print("请求处理完毕") #提示性输出
 				else:
 					white_flag=0 #id白名单flag
+					mail_content="被删除帖子："+"\n" #初始赋值
+					print("进入内容组合")
 					for data_postid in disapeared_data_postid: #遍历每一个被删的帖子
 						if data_postid not in crawled_date_postid: #如果该帖子没有被爬。有这种情况，就是当程序detector函数正在爬取现有的帖子时正好有一个人发新帖子，那么异或运算就会把这个新帖子当做被删除的帖子。我这里这么写就是为了避免出现这种情况。
 							continue #下一个
 						if white_id_list==[] and white_postid_list_for_admin==[]: #如果id白名单和postid白名单都是空的
-							mail_content="被删除帖子："+"\n"
 							mail_content=mail_content+all_poster[data_postid]+"\n"+"******************************************************"+"\n" #直接组合内容
 						elif white_id_list!=[]: #如果id白名单不为空
 							for id in white_id_list: #遍历id白名单的每一个id
@@ -335,7 +336,7 @@ def crawler(page,all_page_number): #爬页面帖子函数
 						elif white_postid_list_for_admin!=[]: #如果版务postid白名单不是空的
 							if data_postid not in white_postid_list_for_admin: #如果被删帖子postid不在版务postid白名单里面
 								mail_content=mail_content+all_poster[data_postid]+"\n"+"******************************************************"+"\n" #组合内容
-					if mail_content=="": #如果发件内容没被更改
+					if mail_content=="被删除帖子：\n": #如果发件内容没被更改
 						mail_content="目前无帖子被删除" #说明目前没有帖子被删除
 					#if username!=ur_username: #还要判断这个请求是不是自己发起的
 					mail(username,"未名BBS守护者自动回复",mail_content,signature) #不是的话就发送站内信
@@ -486,7 +487,3 @@ t3=threading.Thread(target=time_controler) #申明第三个线程
 t1.start() #运行第一个线程
 t2.start() #运行第二个线程
 t3.start() #运行第三个线程
-
-#bug用户删帖后第七页会先爬一下更新第一个帖子#
-#存储disappear#
-#更改通知（复活、停止）#
