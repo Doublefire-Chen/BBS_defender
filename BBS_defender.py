@@ -1,9 +1,10 @@
+# coding:utf-8
+#申明编码的注释必须放在最上面
 #Author:Doublefire.Chen
 #Author_BBS_id:Bigscience
-#last_modified_time:2022年04月25日12:46:21
-#version:2.0
+#last_modified_time:2022年04月25日19:28:06
+#version:3.0
 #location:HSC of PKU or BJMU(dawu,23333)
-# coding:utf-8
 import requests
 import re
 import time
@@ -18,6 +19,9 @@ ur_username="" #填入你的用户名
 password="" #填入你的密码
 t='' #填入你的data form里面的t
 signature= #填入你发站内信想用的的签名档，按顺序，从上往下数，个数减一，比如你想用第4个，这里就填3，不要加引号
+play_with_watern_flag=1 #是否调戏水n（调戏：在守护通知帖成功复活后跟水n讲家乡话），是填1，否填0
+#下面的是家乡话，可自行修改
+holly_shit=["你能主动来送（ ）真是太好了","赵家的（ ）又来删帖了","你删你（ ）呢","你删你（ ）了个（ ）","你就不怕被（ ）（ ）（ ）创（ ）吗","你（ ）什么时候（ ）啊？","本机器人为您兢兢业业的工作精神所感动，特意为您献唱一首歌：听我说👂👂👂谢谢你🙏🙏🙏因为有你👉👉👉温暖了四季🌈🌈🌈谢谢你🙏🙏🙏感谢有你👉👉👉世界更美丽🌏🌏🌏我要谢谢你🙏🙏🙏因为有你👉👉👉爱常在心底💃💃💃谢谢你 🙏🙏🙏感谢有你🙇‍♂🙇‍♂🙇‍♂把幸福传递","非常佩服你的大无畏送鹿精神","领导们对于水n的大无畏送鹿精神作出了高度评价，对于水n在此次舆情防控攻坚战上的卓越贡献给予了充分肯定，为表彰水n的所作所为，领导在心里偷偷地号召BBS全站站友向水n同志学习。","您尽管抽楼，我这个机器人好好陪您玩","天天这么抽，不怕手抽筋吗？"]
 #########################################
 alphabet = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789' #随机字符串的生成，参考：https://blog.csdn.net/qq_32599479/article/details/91042234 本来想用secret的，但是心想：能让大家少装一个包是一个
 serial_number = "".join(random.sample(alphabet,24)) #生成序列号作为程序运行唯一标识符
@@ -39,6 +43,7 @@ stop_flag=0 #停止flag初始赋值
 defender_postid="tmp" #守护通知postid初始赋值
 admin="" #版务列表初始赋值
 first_postid={} #存储每一页第一层楼的postid的字典初始赋值
+detector_flag=0 #是否进入detector的flag，避免两个detector同时运行
 header={
 'Accept': 'application/json, text/javascript, */*; q=0.01',
 'Accept-Encoding': 'gzip, deflate, br',
@@ -147,11 +152,11 @@ def get_post_landlord(url): #获取第一层楼postid函数
 	landlord_postid=re.search(r'data-postid="\d+"',str(first_div)).group(0).replace("data-postid=","").replace('"',"") #获取第一层楼postid
 	return landlord_postid
 def detector(url): #检测被删帖函数
-	global exist_data_postid,reborn_num,five_kill,landlord_postid,defender_postid,first_postid,disapeared_data_postid #申明全局变量
+	global exist_data_postid,reborn_num,five_kill,landlord_postid,defender_postid,first_postid,disapeared_data_postid,detector_flag #申明全局变量
+	detector_flag=1
 	print("detector（）激活") #提示性输出
 	exist_data_postid=[] #现存帖子postid列表初始赋值
-	all_page_number=get_page_number(url) #获取总页数
-	i=all_page_number #临时变量i用来控制循环
+	i=len(first_postid) #临时变量i用来控制循环，防止有人发的新帖子刚好是新的一页的第一个帖子，此时first_postid还没有更新
 	safe_flag=0 #前面页面是否安全flag
 	while i>0: #遍历爬取所有现存帖子的postid
 		if safe_flag==1: #前面的页面如果安全就直接break
@@ -181,7 +186,7 @@ def detector(url): #检测被删帖函数
 	#disapeared_data_postid=set(crawled_date_postid)^set(exist_data_postid) #使用异或运算符找到被删的帖子 #参考：https://blog.csdn.net/qq_40808154/article/details/94591431
 	for postid in crawled_date_postid:
 		if postid >= first_postid[unsafe_page]:
-			if postid not in exist_data_postid:
+			if postid not in exist_data_postid and postid not in disapeared_data_postid: #加后面这个判断防止重复爬取
 				disapeared_data_postid.append(postid)
 				print("发现被删帖子")
 	if str(defender_postid) in disapeared_data_postid: #判断守护通知帖是否被删
@@ -191,6 +196,9 @@ def detector(url): #检测被删帖函数
 		reborn_content="本帖于"+str(now_time)+"自动复活，这是本帖第"+str(reborn_num)+"次复活"+"\n"+"本程序目前设定的运行时间为"+str(running_time)+"小时"+"\n"+defender_content #复活帖内容
 		reply(landlord_postid,reborn_content) #发布复活贴
 		print("第"+str(reborn_num)+"次复活成功") #提示性输出
+		if play_with_watern_flag==1:
+			play_content="（本回帖留给我们最最亲爱的水n同志）\n机器都被水n同志的敬业精神所打动，从语料库中自动生成了家乡话\n水n同志，"+random.choice(holly_shit)
+			reply(landlord_postid,play_content)
 	if len(disapeared_data_postid)!=0: #如果有帖子被删了
 		if len(disapeared_data_postid)%5==0: #判断是否为5的整数倍
 			five_number=len(disapeared_data_postid)/5 #是的话求出5杀的个数
@@ -205,6 +213,7 @@ def detector(url): #检测被删帖函数
 				reply(landlord_postid,Glory_broadcast_content) #发送荣耀播报
 				five_kill.append(five_number) #记录这个五杀
 				print("荣耀播报发送成功") #提示性输出
+	detector_flag=0
 	return disapeared_data_postid 
 def mail(username,title,content,signature): #发站内信函数
 	update_cookies() #更新cookie
@@ -310,7 +319,9 @@ def crawler(page,all_page_number): #爬页面帖子函数
 				all_userid.append(username) #没有被爬过的话就将其存入参与讨论的id列表里，最后炸楼的时候通知需要
 			if (content in ["#思想自由，兼容并包","#思想自由,兼容并包","＃思想自由，兼容并包","＃思想自由,兼容并包"]) and (username not in black_id_list) and (data_postid not in white_postid_list) and (crawl_flag!=0): #由于中英文的井号有2种，逗号有2种，为了站友们方便，所以把4种情况都列出来了，黑白名单的请求不会生效，黑名单我就不多说了，白名单的是之前发送的请求，已经处理过，这里判断一下避免二次回复。crawl_flag的作用是确保整栋楼完整的被爬了一边，这样程序运行之前的请求也是无效的。
 				print("收到站友"+username+"的请求") #提示性输出
-				disapeared_data_postid=detector(url) #获取被删帖子的postid
+				if detector_flag==0: #判断detector函数是否空闲
+					disapeared_data_postid=detector(url) #获取被删帖子的postid
+				print("disapeared_data_postid",disapeared_data_postid)
 				mail_content="目前无帖子被删除" #站内信内容初始赋值
 				if disapeared_data_postid==[]: #判断有无帖子被删
 					print("目前无帖子被删除") #提示性输出
@@ -383,7 +394,7 @@ def main(): #主函数
 	admin=get_admin(url) #获取版务
 	if defender_flag==0: #判断守护通知是否发出
 		landlord_postid=get_post_landlord(url) #获取一楼的postid
-		defender_content=ur_username+"于"+str(start_time)+"为本主题帖运行未名BBS守护者程序"+"\n"+"守护时间："+str(running_time)+"小时"+"\n"+"版本号：公测v2.0"+"\n"+"项目地址：https://github.com/Doublefire-Chen/BBS_defender"+"\n"+"本版块版务："+admin+"\n"+"###以下所有回复内容均不要引号，不要中间的加号，不要句号，不要加多余的字符###"+"\n"+"回复“#+思想自由，兼容并包”查看被删除帖子（站内信形式）"+"\n"+"回复“#+自删”即可将自己的id加入白名单（请在收到站内信提示后再删帖）"+"\n"+"版务回复：“#+删帖postid=#+删帖原因：”即可将该postid加入白名单（未写明删帖原因视为无效回复）（请在收到站内信提示后删帖）" #回复内容赋值
+		defender_content=ur_username+"于"+str(start_time)+"为本主题帖运行未名BBS守护者程序"+"\n"+"守护时间："+str(running_time)+"小时"+"\n"+"版本号：公测v3.0"+"\n"+"项目地址：https://github.com/Doublefire-Chen/BBS_defender"+"\n"+"本版块版务："+admin+"\n"+"###以下所有回复内容均不要引号，不要中间的加号，不要句号，不要加多余的字符###"+"\n"+"回复“#+思想自由，兼容并包”查看被删除帖子（站内信形式）"+"\n"+"回复“#+自删”即可将自己的id加入白名单（请在收到站内信提示后再删帖）"+"\n"+"版务回复：“#+删帖postid=#+删帖原因：”即可将该postid加入白名单（未写明删帖原因视为无效回复）（请在收到站内信提示后删帖）" #回复内容赋值
 		reply(landlord_postid,defender_content) #回帖
 		print("已发布守护通知") #提示性输出
 	while True:
@@ -481,9 +492,22 @@ def time_controler(): #计时器函数
 					quit() #停止本线程，不能用os_quit(0)，因为还没有生成日志
 				else:
 					time.sleep(1800) #睡他半个小时
+def auto_detector(): #自动监测函数
+	global disapeared_data_postid
+	while True:
+		if crawl_flag!=0: #当第一遍完整爬取后	
+			time.sleep(12) #睡12秒
+			if detector_flag==0: #判断detector函数是否空闲
+				disapeared_data_postid=detector(url) #监测
+			print("定时自动爬取，同时看看守护通知帖子还在不在") #提示性输出
+			if stop_flag==1: #如果停止flag被改变
+				quit() #就停止
+
 t1=threading.Thread(target=controller) #申明第一个线程
 t2=threading.Thread(target=main) #申明第二个线程
 t3=threading.Thread(target=time_controler) #申明第三个线程
+t4=threading.Thread(target=auto_detector) #申明第四个线程
 t1.start() #运行第一个线程
 t2.start() #运行第二个线程
 t3.start() #运行第三个线程
+t4.start() #运行第四个线程
